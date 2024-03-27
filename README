@@ -1,0 +1,15 @@
+I'm following this guide:
+https://leocode.com/development/automation-with-selenium-and-python-for-beginners/
+
+Need to scrape: https://ashrae-meteo.info/v2.0/places.php?continent=North%20America
+
+I need to get 2021 data of each of the stations per continent
+
+The list of stations you get get a query like: ?lat=53.113&lng=-111.181&place=%27%27&wmo=710050
+
+then i need to get Extreme Annual Design Conditions > n-Year Return Period Values of Extreme Temperature
+n=5, 10, 20, 50 year max values from that table.
+
+So the table fields will look like:
+
+year, continent, country, weather_station_name, long, lat, max5, max10, max20, max50
