@@ -5,6 +5,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 from bs4 import BeautifulSoup
+import re
 
 def test_my_very_first_test():
 
@@ -84,7 +85,7 @@ handbook_links = [
 ]
 # re-open a driver to iterate the whole list of href to get the data
 second_driver = webdriver.Chrome(service=service, options=chrome_options)
-wait = WebDriverWait(driversecond_driver, 10)
+wait = WebDriverWait(second_driver, 10)
 time.sleep(3)
 
 # Prob the best way to do this is like 10 at a time
@@ -93,19 +94,40 @@ full_station_data = []
 # for href in country_href_list:
 #     driver.get(ashrae_base_link + href)
 
-for index, link in enumerate(handbook_links):
-    if index == 0:
-        second_driver = driver.get(link)
-    else:
-        second_driver.execute_script("window.open(arguments[0], '_blank');", link)
-    climate_page = second_driver.page_source
-    climate_soup = BeautifulSoup(climate_page, 'html.parser')
+for link in handbook_links:
+    second_driver.execute_script("window.open(arguments[0], '_blank');", link)
 
+second_driver.close()
+
+for link in handbook_links:
     dry_wet = {
         "station_name": "",
+        "latitude": "",
+        "longitude": "",
         "drybulb": [],
         "wetbulb": []
        }
+
+    # Regular expression pattern to match lat and lng
+    pattern = r'lat=(-?\d+\.\d+)&lng=(-?\d+\.\d+)'
+
+    # Search for lat and lng using regex
+    match = re.search(pattern, link)
+
+    if match:
+        lat = match.group(1)
+        lng = match.group(2)
+        print("Latitude:", lat)
+        print("Longitude:", lng)
+        dry_wet["latitude"] = lat
+        dry_wet["longitude"] = lng
+    else:
+        print("Latitude and longitude not found.")
+
+    second_driver.switch_to.window(second_driver.window_handles[0])
+    climate_page = second_driver.page_source
+    climate_soup = BeautifulSoup(climate_page, 'html.parser')
+
 
     # Get station name
     balloon_tag = climate_soup.find('div', class_='baloon_icon')
@@ -154,3 +176,13 @@ for index, link in enumerate(handbook_links):
     # Delete every other value starting from the first value in 'drybulb' and 'wetbulb' lists because we only need Max values
     dry_wet["drybulb"] = dry_wet["drybulb"][1::2]
     dry_wet["wetbulb"] = dry_wet["wetbulb"][1::2]
+
+    years = ["n5years", "n10years", "n20years", "n50years"]
+    dry_wet_final = {'station_name': dry_wet['station_name']}
+
+    for key, values in dry_wet.items():
+        if key in ["drybulb", "wetbulb"]:
+            dry_wet_final[key] = [(years[i], value) for i, value in enumerate(values)]
+
+    full_station_data.append(dry_wet_final)
+    second_driver.close()
