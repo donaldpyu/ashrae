@@ -1,6 +1,19 @@
 I'm following this guide:
 https://leocode.com/development/automation-with-selenium-and-python-for-beginners/
 
+It doesn't really work because you need to download a specific Chrome driver because the latest version of Chrome
+is not compatible with Selenium.
+
+# C:\Users\donal\PycharmProjects\ashrae\chromedriver.exe
+# E       selenium.common.exceptions.SessionNotCreatedException: Message: session not created: This version of ChromeDriver only supports Chrome version 114
+# E       Current browser version is 123.0.6312.86 with binary path C:\Program Files\Google\Chrome\Application\chrome.exe
+
+Non headless:
+    https://storage.googleapis.com/chrome-for-testing-public/123.0.6312.86/win64/chromedriver-win64.zip
+Headless:
+    https://storage.googleapis.com/chrome-for-testing-public/123.0.6312.86/win64/chrome-headless-shell-win64.zip
+
+
 Need to scrape: https://ashrae-meteo.info/v2.0/places.php?continent=North%20America
 
 I need to get 2021 data of each of the stations per continent
