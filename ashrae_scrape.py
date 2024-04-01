@@ -144,14 +144,19 @@ def get_station_data(full_station_data, country_href_list):
         full_station_data: a filled list of all the ASHRAE station data.
     """
 
+    print("Length of how long the country_href_list to process: %s" % len(country_href_list))
+    total_iterations = len(country_href_list) // 10 + (1 if len(country_href_list) % 10 != 0 else 0)
+    print("Total number of iterations: %s" % total_iterations)
     # We want to have groups of 10 links at a time, so we don't open 9000 tabs.
-    for i in range(0, len(country_href_list), 10):
+    for idx, i in enumerate(range(0, len(country_href_list), 10)):
+        progress = (idx / total_iterations) * 100
+        print(f"Progress of iteration in %: {progress:.2f}%")
+        print(f"Progress of iteration in fractions: {idx} / {total_iterations}")
+
         group = country_href_list[i:i + 10]
         ashrae_link_group = [ashrae_base_link + value for value in group]
         print("ASHRAE Link Group: ")
         print(ashrae_link_group)
-        print("Status of range and link group...")
-        print(range(0, len(country_href_list), 10))
 
         # Re-open a driver to iterate the whole list of href to get the data
         second_driver = webdriver.Chrome(service=service, options=chrome_options)
@@ -321,9 +326,27 @@ def ashrae_to_csv(full_station_data):
 
 def main():
     full_station_data = []
-    empty_country_href_list = []
-    country_href_list = get_country_list(empty_country_href_list)
-    get_station_data(full_station_data, country_href_list)
+    # empty_country_href_list = []
+    # country_href_list = get_country_list(empty_country_href_list)
+    test_country_href_list = [
+        # These link has empty data.
+        "https://ashrae-meteo.info/v2.0/index.php?lat=47.127&lng=9.518&place=%27%27&wmo=69900",
+        "https://ashrae-meteo.info/v2.0/index.php?lat=49.627&lng=6.212&place=%27%27&wmo=65900",
+        # Has data.
+        "https://ashrae-meteo.info/v2.0/index.php?lat=42.183&lng=26.567&place=%27%27&wmo=156420",  # Elhovo, Bulgaria
+        "https://ashrae-meteo.info/v2.0/index.php?lat=41.650&lng=25.383&place=%27%27&wmo=157300",  # Kardzhali, Bulgaria
+        "https://ashrae-meteo.info/v2.0/index.php?lat=43.348&lng=17.794&place=%27%27&wmo=146480",  # Mostar, Bosnia
+        "https://ashrae-meteo.info/v2.0/index.php?lat=44.476&lng=23.113&place=%27%27&wmo=154120",  # Barles, Romania
+        "https://ashrae-meteo.info/v2.0/index.php?lat=46.536&lng=23.310&place=%27%27&wmo=151630",  # Baisoara, Romania
+        "https://ashrae-meteo.info/v2.0/index.php?lat=39.806&lng=116.469&place=%27%27&wmo=545110",  # Beijing, China
+        "https://ashrae-meteo.info/v2.0/index.php?lat=29.576&lng=106.461&place=%27%27&wmo=575160",  # Chongqing, China
+        "https://ashrae-meteo.info/v2.0/index.php?lat=22.309&lng=113.922&place=%27%27&wmo=450070",  # HK, Hong Kong
+        "https://ashrae-meteo.info/v2.0/index.php?lat=25.033&lng=121.515&place=%27%27&wmo=466920"  # Taipei, Taiwan
+    ]
+    prefix = "https://ashrae-meteo.info/v2.0/"
+    modified_urls = [url[len(prefix):] for url in test_country_href_list]
+    # get_station_data(full_station_data, country_href_list)
+    get_station_data(full_station_data, modified_urls)
     ashrae_to_csv(full_station_data)
     print("Full program has been completed!")
 
