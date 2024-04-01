@@ -13,6 +13,8 @@ Make sure the chromedriver.exe is the correct version for the Selenium version.
 As of 2024-04-01, the version of selenium is 4.19.0, which runs on chrome driver version 114.0.5735.90.
 In this directory is the correct chromedriver for this time.
 
+You can download the drivers [here](https://chromedriver.chromium.org/downloads).
+
 Run this in your terminal, it will start a venv and install the packages for that venv:
 
 ```
