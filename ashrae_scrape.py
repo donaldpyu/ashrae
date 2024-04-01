@@ -1,6 +1,7 @@
 import re
 import time
 import csv
+import random
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -12,6 +13,19 @@ from selenium.webdriver.support.ui import WebDriverWait
 ashrae_base_link = "https://ashrae-meteo.info/v2.0/"
 service = Service()
 chrome_options = webdriver.ChromeOptions()
+
+
+def random_wait():
+    """ Generating random times between 1 and 4 seconds to sleep the program, so we're not spamming the website.
+
+    :return:
+        time.sleep(random.randint(1, 4)
+    """
+    wait_time = random.randint(1, 4)
+    print(f"Waiting for {wait_time} seconds...")
+    time.sleep(wait_time)
+    print("Wait is now over")
+    return
 
 
 def get_country_list(country_href_list):
@@ -31,7 +45,7 @@ def get_country_list(country_href_list):
     driver = webdriver.Chrome(service=service, options=chrome_options)
     wait = WebDriverWait(driver, 10)  # Wait for page to load, so we don't miss clicking anything.
     driver.get(ashrae_base_link + "places.php")  # So you don't have to render the map
-    time.sleep(3)
+    random_wait()
 
     # We only need 2021 data, so we click on the 2021 page to render the list of stations from that page.
     xpath_button_2021 = '// *[ @ id = "radio"] / label[4] / span[1]'
@@ -63,6 +77,7 @@ def get_country_list(country_href_list):
     print("Opening new tabs for each link...")
     for link in station_li_href_list:
         driver.execute_script("window.open(arguments[0], '_blank');", link)
+        random_wait()
     # Close the first tab because we don't need it anymore.
     driver.switch_to.window(driver.window_handles[0])
     driver.close()
@@ -82,6 +97,7 @@ def get_country_list(country_href_list):
                 print(href)
                 country_href_list.append(href)
         driver.close()
+        random_wait()
     print("List of href has been created!")
     print(f"Length of the href list: {len(country_href_list)}")
     return country_href_list
@@ -109,11 +125,11 @@ def get_station_data(full_station_data, country_href_list):
 
         # Re-open a driver to iterate the whole list of href to get the data
         second_driver = webdriver.Chrome(service=service, options=chrome_options)
-        wait = WebDriverWait(second_driver, 10)
         time.sleep(3)
 
         for link in ashrae_link_group:
             second_driver.execute_script("window.open(arguments[0], '_blank');", link)
+            random_wait()
         # Close the empty tab, so it iterates through the opened ASHRAE pages.
         second_driver.close()
 
@@ -243,6 +259,7 @@ def get_station_data(full_station_data, country_href_list):
             full_station_data.append(dry_wet_final)
             print(f"{dry_wet_final["staion_name"]} data has been added to full_station_data.")
             second_driver.close()
+            random_wait()
     return full_station_data
 
 
@@ -288,7 +305,7 @@ def main():
         "https://ashrae-meteo.info/v2.0/index.php?lat=22.309&lng=113.922&place=%27%27&wmo=450070",  # HK, Hong Kong
         "https://ashrae-meteo.info/v2.0/index.php?lat=25.033&lng=121.515&place=%27%27&wmo=466920"  # Taipei, Taiwan
     ]
-    get_station_data(full_station_data, test_country_href_list)  # country_href_list)
+    get_station_data(full_station_data, test_country_href_list)
     ashrae_to_csv(full_station_data)
 
 
