@@ -56,6 +56,21 @@ def random_wait():
     return
 
 
+def total_execution_time(function):
+    """Calculates the total duration in seconds of the function
+    :arg:
+        function: The function being passed to understand how long the duration will be.
+    :return:
+        total_execution_time: The duration in seconds of how long the function took.
+    """
+    total_start_time = time.time()
+    function()
+    total_end_time = time.time()
+    total_execution_time = total_end_time - total_start_time
+    print(f"Total {function().__name__} execution time took {total_execution_time:.2f} seconds")
+    return total_execution_time
+
+
 def get_country_list(country_href_list):
     """
     Starting here we get 2021 continents -> countries -> links to each station for climate data by navigating ASHRAE
@@ -68,6 +83,7 @@ def get_country_list(country_href_list):
     :return:
         country_href_list: A list of all the country href links per continent in 2021.
     """
+    total_start_time = time.time()
 
     # Initialize chrome drive and settings.
     driver = webdriver.Chrome(service=service, options=chrome_options)
@@ -128,8 +144,13 @@ def get_country_list(country_href_list):
                 country_href_list.append(href)
         driver.close()
         random_wait()
+
+    total_end_time = time.time()
+    total_execution_time = total_end_time - total_start_time
+    print(f"Total get_country_list execution time took {total_execution_time:.2f} seconds")
     print("List of href has been created!")
     print(f"Length of the href list: {len(country_href_list)}")
+
     return country_href_list
 
 
@@ -143,12 +164,14 @@ def get_station_data(full_station_data, country_href_list):
     :return:
         full_station_data: a filled list of all the ASHRAE station data.
     """
+    total_start_time = time.time()
 
     print("Length of how long the country_href_list to process: %s" % len(country_href_list))
     total_iterations = len(country_href_list) // 10 + (1 if len(country_href_list) % 10 != 0 else 0)
     print("Total number of iterations: %s" % total_iterations)
     # We want to have groups of 10 links at a time, so we don't open 9000 tabs.
     for idx, i in enumerate(range(0, len(country_href_list), 10)):
+        iteration_start_time = time.time()
         progress = (idx / total_iterations) * 100
         print(f"Progress of iteration in %: {progress:.2f}%")
         print(f"Progress of iteration in fractions: {idx} / {total_iterations}")
@@ -295,9 +318,16 @@ def get_station_data(full_station_data, country_href_list):
             print(f"Appending {dry_wet_final["station_name"]} data onto full_station_data...")
             full_station_data.append(dry_wet_final)
             print(f"{dry_wet_final["station_name"]} data has been added to full_station_data.")
-            print("###############################################################################################")
             second_driver.close()
             random_wait()
+            iteration_end_time = time.time()
+            iteration_execution_time = iteration_end_time - iteration_start_time
+            print(f"{dry_wet_final["station_name"]} iteration execution time took {iteration_execution_time:.2f} seconds")
+            print("###############################################################################################")
+
+    total_end_time = time.time()
+    total_execution_time = total_end_time - total_start_time
+    print(f"Total get_station_data execution time took {total_execution_time:.2f} seconds")
     return full_station_data
 
 
@@ -310,7 +340,7 @@ def ashrae_to_csv(full_station_data):
     :return:
         .csv file of the ASHRAE station data
     """
-
+    total_start_time = time.time()
     fieldnames = full_station_data[0].keys()
     csv_file_path = "full_station_data.csv"
 
@@ -320,34 +350,24 @@ def ashrae_to_csv(full_station_data):
         writer.writeheader()
         for row in full_station_data:
             writer.writerow(row)
+
+    total_end_time = time.time()
+    total_execution_time = total_end_time - total_start_time
+    print(f"Total ashrae_to_csv execution time took {total_execution_time:.2f} seconds")
     print(f"CSV file '{csv_file_path}' has been created.")
     return
 
 
 def main():
+    main_start_time = time.time()
     full_station_data = []
-    # empty_country_href_list = []
-    # country_href_list = get_country_list(empty_country_href_list)
-    test_country_href_list = [
-        # These link has empty data.
-        "https://ashrae-meteo.info/v2.0/index.php?lat=47.127&lng=9.518&place=%27%27&wmo=69900",
-        "https://ashrae-meteo.info/v2.0/index.php?lat=49.627&lng=6.212&place=%27%27&wmo=65900",
-        # Has data.
-        "https://ashrae-meteo.info/v2.0/index.php?lat=42.183&lng=26.567&place=%27%27&wmo=156420",  # Elhovo, Bulgaria
-        "https://ashrae-meteo.info/v2.0/index.php?lat=41.650&lng=25.383&place=%27%27&wmo=157300",  # Kardzhali, Bulgaria
-        "https://ashrae-meteo.info/v2.0/index.php?lat=43.348&lng=17.794&place=%27%27&wmo=146480",  # Mostar, Bosnia
-        "https://ashrae-meteo.info/v2.0/index.php?lat=44.476&lng=23.113&place=%27%27&wmo=154120",  # Barles, Romania
-        "https://ashrae-meteo.info/v2.0/index.php?lat=46.536&lng=23.310&place=%27%27&wmo=151630",  # Baisoara, Romania
-        "https://ashrae-meteo.info/v2.0/index.php?lat=39.806&lng=116.469&place=%27%27&wmo=545110",  # Beijing, China
-        "https://ashrae-meteo.info/v2.0/index.php?lat=29.576&lng=106.461&place=%27%27&wmo=575160",  # Chongqing, China
-        "https://ashrae-meteo.info/v2.0/index.php?lat=22.309&lng=113.922&place=%27%27&wmo=450070",  # HK, Hong Kong
-        "https://ashrae-meteo.info/v2.0/index.php?lat=25.033&lng=121.515&place=%27%27&wmo=466920"  # Taipei, Taiwan
-    ]
-    prefix = "https://ashrae-meteo.info/v2.0/"
-    modified_urls = [url[len(prefix):] for url in test_country_href_list]
-    # get_station_data(full_station_data, country_href_list)
-    get_station_data(full_station_data, modified_urls)
+    empty_country_href_list = []
+    country_href_list = get_country_list(empty_country_href_list)
+    get_station_data(full_station_data, country_href_list)
     ashrae_to_csv(full_station_data)
+    main_end_time = time.time()
+    main_execution_time = main_end_time - main_start_time
+    print(f"Total main program took {main_execution_time:.2f}")
     print("Full program has been completed!")
 
 
