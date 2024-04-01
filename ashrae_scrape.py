@@ -1,3 +1,31 @@
+""" This python program will navigate ashrae-meteo.info/v2.0 and extract the all of the stations around the world.
+
+This program uses Selenium to navigate the pages, and BS4 to extract the data from the html.
+
+I didn't find any robots.txt in the ashrae main page, or the ashrae-meteo.info, so I'm assuming it's okay to use
+a chrome driver on the website.
+
+Use these variables to test out the country_href_list and validate the data  in full_station_data for:
+    long, lat, drybulb, and wetbulb.
+test_country_href_list = [
+    # These link has empty data.
+    "https://ashrae-meteo.info/v2.0/index.php?lat=47.127&lng=9.518&place=%27%27&wmo=69900",
+    "https://ashrae-meteo.info/v2.0/index.php?lat=49.627&lng=6.212&place=%27%27&wmo=65900",
+    # Has data.
+    "https://ashrae-meteo.info/v2.0/index.php?lat=42.183&lng=26.567&place=%27%27&wmo=156420",  # Elhovo, Bulgaria
+    "https://ashrae-meteo.info/v2.0/index.php?lat=41.650&lng=25.383&place=%27%27&wmo=157300",  # Kardzhali, Bulgaria
+    "https://ashrae-meteo.info/v2.0/index.php?lat=43.348&lng=17.794&place=%27%27&wmo=146480",  # Mostar, Bosnia
+    "https://ashrae-meteo.info/v2.0/index.php?lat=44.476&lng=23.113&place=%27%27&wmo=154120",  # Barles, Romania
+    "https://ashrae-meteo.info/v2.0/index.php?lat=46.536&lng=23.310&place=%27%27&wmo=151630",  # Baisoara, Romania
+    "https://ashrae-meteo.info/v2.0/index.php?lat=39.806&lng=116.469&place=%27%27&wmo=545110",  # Beijing, China
+    "https://ashrae-meteo.info/v2.0/index.php?lat=29.576&lng=106.461&place=%27%27&wmo=575160",  # Chongqing, China
+    "https://ashrae-meteo.info/v2.0/index.php?lat=22.309&lng=113.922&place=%27%27&wmo=450070",  # HK, Hong Kong
+    "https://ashrae-meteo.info/v2.0/index.php?lat=25.033&lng=121.515&place=%27%27&wmo=466920"  # Taipei, Taiwan
+]
+prefix = "https://ashrae-meteo.info/v2.0/"
+modified_urls = [url[len(prefix):] for url in test_country_href_list]
+"""
+
 import re
 import time
 import csv
@@ -21,7 +49,7 @@ def random_wait():
     :return:
         time.sleep(random.randint(1, 4)
     """
-    wait_time = random.randint(1, 4)
+    wait_time = random.randint(1, 3)
     print(f"Waiting for {wait_time} seconds...")
     time.sleep(wait_time)
     print("Wait is now over")
@@ -130,11 +158,16 @@ def get_station_data(full_station_data, country_href_list):
         for link in ashrae_link_group:
             second_driver.execute_script("window.open(arguments[0], '_blank');", link)
             random_wait()
-        # Close the empty tab, so it iterates through the opened ASHRAE pages.
+            # Close the empty tab, so it iterates through the opened ASHRAE pages.
         second_driver.close()
 
-        for link in ashrae_link_group:
-            print(f"We are executing on {link}")
+        for length in range(len(ashrae_link_group)):
+            second_driver.switch_to.window(second_driver.window_handles[0])
+            current_url = second_driver.current_url
+            climate_page = second_driver.page_source
+            climate_soup = BeautifulSoup(climate_page, "html.parser")
+
+            print(f"We are executing on {current_url}")
             dry_wet = {
                 "station_name": "",
                 "latitude": "",
@@ -147,7 +180,7 @@ def get_station_data(full_station_data, country_href_list):
             pattern = r'lat=(-?\d+\.\d+)&lng=(-?\d+\.\d+)'
 
             # Search for lat and lng using regex
-            match = re.search(pattern, link)
+            match = re.search(pattern, current_url)
 
             if match:
                 print("Latitude and longitude found.")
@@ -159,13 +192,6 @@ def get_station_data(full_station_data, country_href_list):
                 dry_wet["longitude"] = lng
             else:
                 print("Latitude and longitude not found.")
-
-            second_driver.switch_to.window(second_driver.window_handles[0])
-            climate_page = second_driver.page_source
-            climate_soup = BeautifulSoup(climate_page, "html.parser")
-
-            # Need to write an exception, if it's missing, then pass to the next link.
-            # if balloon_tag:
 
             # Get station name. It's next to the balloon icon. And baloon is misspelled intentionally.
             balloon_tag = climate_soup.find("div", class_="baloon_icon")
@@ -202,8 +228,8 @@ def get_station_data(full_station_data, country_href_list):
                 rows = next_tbody_element.find_all('tr')
 
                 # Now we want to get the dry and wet bulb values of n-Year Return Period Values of Extreme Temperature.
+                print("Getting dry and wet bulb values...")
                 for row in rows:
-                    print("Getting dry and wet bulb values...")
                     td_tags = row.find_all('td', class_='brd7')  # The values are within this row
                     if td_tags:
                         for td_tag in td_tags:
@@ -214,6 +240,8 @@ def get_station_data(full_station_data, country_href_list):
                             elif "WB" in td_tag.get_text():
                                 dry_wet["wetbulb"].extend(values)
                 print("All Dry and wet bulb values added to full_station_data")
+                print("Drybulb values: %s" % dry_wet["drybulb"])
+                print("Wetbulb values: %s" % dry_wet["wetbulb"])
 
                 # Only need n=5, 10, 20, 50 year max, so delete first 4
                 print("Cleaning up dry and wet bulb values...")
@@ -229,6 +257,8 @@ def get_station_data(full_station_data, country_href_list):
                 dry_wet["drybulb"] = dry_wet["drybulb"][1::2]
                 dry_wet["wetbulb"] = dry_wet["wetbulb"][1::2]
                 print("Min values removed.")
+                print("Final drybulb values: %s" % dry_wet["drybulb"])
+                print("Final wetbulb values: %s" % dry_wet["wetbulb"])
 
                 # Then add which values are 5, 10, 20, and 50 years. Starting with 5 years in the list.
                 print("Adding labels to the Max values of n-Year Return Period Values of Extreme Temperature...")
@@ -244,7 +274,7 @@ def get_station_data(full_station_data, country_href_list):
                         dry_wet_final[key] = [(years[i], value) for i, value in enumerate(values)]
                 print("Labels added for max values of n-Year Return Period Values of Extreme Temperature!")
             else:
-                print("No table found for Extreme Annual Design Conditions for %s" % link)
+                print("No table found for Extreme Annual Design Conditions for %s" % current_url)
                 print("Filling with empty data")
                 years = ["n5years", "n10years", "n20years", "n50years"]
                 dry_wet_final = {
@@ -255,9 +285,10 @@ def get_station_data(full_station_data, country_href_list):
                 for key in ["drybulb", "wetbulb"]:
                     dry_wet_final[key] = [(years[i], "N/A") for i in range(len(years))]
                 print("N/A values added to the dry and wet bulb field.")
-            print(f"Appending {dry_wet_final["staion_name"]} data onto full_station_data...")
+            print(f"Appending {dry_wet_final["station_name"]} data onto full_station_data...")
             full_station_data.append(dry_wet_final)
-            print(f"{dry_wet_final["staion_name"]} data has been added to full_station_data.")
+            print(f"{dry_wet_final["station_name"]} data has been added to full_station_data.")
+            print("###############################################################################################")
             second_driver.close()
             random_wait()
     return full_station_data
@@ -288,25 +319,11 @@ def ashrae_to_csv(full_station_data):
 
 def main():
     full_station_data = []
-    # empty_country_href_list = []
-    # country_href_list = get_country_list(empty_country_href_list)
-    test_country_href_list = [
-        # These link has empty data.
-        "https://ashrae-meteo.info/v2.0/index.php?lat=47.127&lng=9.518&place=%27%27&wmo=69900",
-        "https://ashrae-meteo.info/v2.0/index.php?lat=49.627&lng=6.212&place=%27%27&wmo=65900",
-        # Has data.
-        "https://ashrae-meteo.info/v2.0/index.php?lat=42.183&lng=26.567&place=%27%27&wmo=156420",  # Elhovo, Bulgaria
-        "https://ashrae-meteo.info/v2.0/index.php?lat=41.650&lng=25.383&place=%27%27&wmo=157300",  # Kardzhali, Bulgaria
-        "https://ashrae-meteo.info/v2.0/index.php?lat=43.348&lng=17.794&place=%27%27&wmo=146480",  # Mostar, Bosnia
-        "https://ashrae-meteo.info/v2.0/index.php?lat=44.476&lng=23.113&place=%27%27&wmo=154120",  # Barles, Romania
-        "https://ashrae-meteo.info/v2.0/index.php?lat=46.536&lng=23.310&place=%27%27&wmo=151630",  # Baisoara, Romania
-        "https://ashrae-meteo.info/v2.0/index.php?lat=39.806&lng=116.469&place=%27%27&wmo=545110",  # Beijing, China
-        "https://ashrae-meteo.info/v2.0/index.php?lat=29.576&lng=106.461&place=%27%27&wmo=575160",  # Chongqing, China
-        "https://ashrae-meteo.info/v2.0/index.php?lat=22.309&lng=113.922&place=%27%27&wmo=450070",  # HK, Hong Kong
-        "https://ashrae-meteo.info/v2.0/index.php?lat=25.033&lng=121.515&place=%27%27&wmo=466920"  # Taipei, Taiwan
-    ]
-    get_station_data(full_station_data, test_country_href_list)
+    empty_country_href_list = []
+    country_href_list = get_country_list(empty_country_href_list)
+    get_station_data(full_station_data, country_href_list)
     ashrae_to_csv(full_station_data)
+    print("Full program has been completed!")
 
 
 if __name__ == '__main__':
