@@ -26,10 +26,10 @@ prefix = "https://ashrae-meteo.info/v2.0/"
 modified_urls = [url[len(prefix):] for url in test_country_href_list]
 """
 
-import re
-import time
 import csv
 import random
+import re
+import time
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -76,6 +76,8 @@ def get_country_list(country_href_list):
     random_wait()
 
     # We only need 2021 data, so we click on the 2021 page to render the list of stations from that page.
+    # Hard coded 2021 XPath, but eventually will gather the list of paths depending on values from the page when they
+    # update the page to include more years or change the webpage. This is okay as of 2024-04-01.
     xpath_button_2021 = '// *[ @ id = "radio"] / label[4] / span[1]'
     button_2021 = wait.until(EC.element_to_be_clickable((By.XPATH, xpath_button_2021)))
     print("Clicking on 2021...")
@@ -267,7 +269,7 @@ def get_station_data(full_station_data, country_href_list):
                     "station_name": dry_wet["station_name"],
                     "latitude": dry_wet["latitude"],
                     "longitude": dry_wet["longitude"]
-                    }
+                }
 
                 for key, values in dry_wet.items():
                     if key in ["drybulb", "wetbulb"]:
@@ -281,7 +283,7 @@ def get_station_data(full_station_data, country_href_list):
                     "station_name": dry_wet["station_name"],
                     "latitude": dry_wet["latitude"],
                     "longitude": dry_wet["longitude"]
-                    }
+                }
                 for key in ["drybulb", "wetbulb"]:
                     dry_wet_final[key] = [(years[i], "N/A") for i in range(len(years))]
                 print("N/A values added to the dry and wet bulb field.")
