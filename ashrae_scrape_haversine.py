@@ -643,7 +643,7 @@ def main():
     href_long_lat = []
     get_href_long_lat(country_href_list, href_long_lat)
 
-    # Get Haversine distance from weather station and ASHRAE and find closest distance.
+    # Get Haversine distance from weather station and ASHRAE and find the closest distance.
     combined_list = []
     non_none_href_long_lat = [x for x in href_long_lat if x["latitude"] != "" or x["longitude"] != ""]
     weather_station_compare_long_lat(weather_station_long_lat, non_none_href_long_lat, combined_list)
