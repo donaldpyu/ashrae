@@ -597,7 +597,7 @@ def join_station_data(bq_data, ashrae_data):
         }
     :return: A joined pandas DataFrame.
     """
-    df1 = pd.read_csv(ashrae_data)
+    df1 = pd.DataFrame(ashrae_data)
     unique_df1 = df1.drop_duplicates(subset=["station_name"])
     df2 = pd.DataFrame(bq_data)
     joined_df = pd.merge(df2, unique_df1, left_on=["ashrae_long", "ashrae_lat"], right_on=["longitude", "latitude"])
