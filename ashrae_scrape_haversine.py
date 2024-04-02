@@ -1,38 +1,12 @@
-""" This python program will navigate ashrae-meteo.info/v2.0 and extract the all of the stations around the world.
-
-This program uses Selenium to navigate the pages, and BS4 to extract the data from the html.
-
-I didn't find any robots.txt in the ashrae main page, or the ashrae-meteo.info, so I'm assuming it's okay to use
-a chrome driver on the website.
-
-Use these variables to test out the country_href_list and validate the data  in full_station_data for:
-    long, lat, drybulb, and wetbulb.
-test_country_href_list = [
-    # These link has empty data.
-    "https://ashrae-meteo.info/v2.0/index.php?lat=47.127&lng=9.518&place=%27%27&wmo=69900",
-    "https://ashrae-meteo.info/v2.0/index.php?lat=49.627&lng=6.212&place=%27%27&wmo=65900",
-    # Has data.
-    "https://ashrae-meteo.info/v2.0/index.php?lat=42.183&lng=26.567&place=%27%27&wmo=156420",  # Elhovo, Bulgaria
-    "https://ashrae-meteo.info/v2.0/index.php?lat=41.650&lng=25.383&place=%27%27&wmo=157300",  # Kardzhali, Bulgaria
-    "https://ashrae-meteo.info/v2.0/index.php?lat=43.348&lng=17.794&place=%27%27&wmo=146480",  # Mostar, Bosnia
-    "https://ashrae-meteo.info/v2.0/index.php?lat=44.476&lng=23.113&place=%27%27&wmo=154120",  # Barles, Romania
-    "https://ashrae-meteo.info/v2.0/index.php?lat=46.536&lng=23.310&place=%27%27&wmo=151630",  # Baisoara, Romania
-    "https://ashrae-meteo.info/v2.0/index.php?lat=39.806&lng=116.469&place=%27%27&wmo=545110",  # Beijing, China
-    "https://ashrae-meteo.info/v2.0/index.php?lat=29.576&lng=106.461&place=%27%27&wmo=575160",  # Chongqing, China
-    "https://ashrae-meteo.info/v2.0/index.php?lat=22.309&lng=113.922&place=%27%27&wmo=450070",  # HK, Hong Kong
-    "https://ashrae-meteo.info/v2.0/index.php?lat=25.033&lng=121.515&place=%27%27&wmo=466920"  # Taipei, Taiwan
-]
-prefix = "https://ashrae-meteo.info/v2.0/"
-modified_urls = [url[len(prefix):] for url in test_country_href_list]
-
-
-Alright, I'm going to have to reduce the 9k long and lats into something smaller list
+""" From the weather station long lat from the bigquery public data set, we find the ASHRAE weather stations that are
+nearest to that location using Haversine formula.
 """
 
 import csv
 import random
 import re
 import time
+import math
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -40,6 +14,78 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+
+weather_station_long_lat = [
+    (-73.75, 45.5),
+    (-95.75, 41.25),
+    (-118.5, 34),
+    (-111.75, 33.25),
+    (-79.5, 43.75),
+    (-77.5, 39),
+    (-112, 40.25),
+    (-100.5, 20.5),
+    (-115, 36),
+    (-112, 33.5),
+    (-80, 33),
+    (-96.75, 40.75),
+    (-94.5, 39.25),
+    (-97.5, 30.5),
+    (-77.25, 37.25),
+    (-112, 40.5),
+    (-77.5, 39),
+    (-97, 36.25),
+    (-95.25, 36.25),
+    (-85, 41),
+    (-82.75, 39.75),
+    (-84.5, 33.75),
+    (-112, 40.5),
+    (-84, 40.75),
+    (-77.5, 38.75),
+    (-73.5, 45.5),
+    (-94.5, 39.25),
+    (-79.25, 43.75),
+    (-97, 32.5),
+    (-85.75, 35),
+    (-121.25, 45.75),
+    (-96, 41.25),
+    (-118.25, 33.75),
+    (-77.5, 39),
+    (-84.5, 33.75),
+    (-112, 40.75),
+    (-81.5, 36),
+    (-97.5, 30.5),
+    (-96.25, 41.25),
+    (-93.5, 42),
+    (-80.5, 33.25),
+    (-87.25, 36.5),
+    (-74, 45.25),
+    (-100.25, 20.25),
+    (-96.75, 32.5),
+    (-96.75, 32.5),
+    (-79.5, 43.5),
+    (-83, 39.75),
+    (-95.25, 36.25),
+    (-80.25, 33),
+    (-77.5, 39),
+    (-119.5, 39.5),
+    (-115.25, 36),
+    (-77.5, 39),
+    (-119.5, 39.5),
+    (-115.25, 36),
+    (-77.5, 39),
+    (-119.5, 39.5),
+    (-115.25, 36),
+    (-77.5, 39),
+    (-95.75, 41.25),
+    (-91.75, 42),
+    (-83, 40),
+    (-77.5, 38.75),
+    (-123, 45.5),
+    (-82.75, 40),
+    (-112, 33.25),
+    (-121.25, 45.5),
+    (-118.25, 34)
+]
 
 ashrae_base_link = "https://ashrae-meteo.info/v2.0/"
 service = Service()
@@ -57,21 +103,6 @@ def random_wait():
     time.sleep(wait_time)
     print("Wait is now over")
     return
-
-
-def total_execution_time(function):
-    """Calculates the total duration in seconds of the function
-    :arg:
-        function: The function being passed to understand how long the duration will be.
-    :return:
-        total_execution_time: The duration in seconds of how long the function took.
-    """
-    total_start_time = time.time()
-    function()
-    total_end_time = time.time()
-    total_execution_time = total_end_time - total_start_time
-    print(f"Total {function().__name__} execution time took {total_execution_time:.2f} seconds")
-    return total_execution_time
 
 
 def get_country_list(country_href_list):
@@ -157,6 +188,81 @@ def get_country_list(country_href_list):
     return country_href_list
 
 
+def get_href_long_lat(country_href_list, href_long_lat):
+
+    # Regular expression pattern to match lat and lng from the url.
+    pattern = r'lat=(-?\d+\.\d+)&lng=(-?\d+\.\d+)'
+
+    for href in country_href_list:
+        href_long_lat_init = {
+            "href": href,
+            "latitude": "",
+            "longitude": ""
+        }
+
+        # Search for lat and lng using regex
+        match = re.search(pattern, href)
+        if match:
+            print("Latitude and longitude found.")
+            lat = match.group(1)
+            lng = match.group(2)
+            print("Latitude:", lat)
+            print("Longitude:", lng)
+            href_long_lat_init["latitude"] = lat
+            href_long_lat_init["longitude"] = lng
+        else:
+            print("Latitude and longitude not found.")
+        href_long_lat.append(href_long_lat_init)
+    return href_long_lat
+
+
+def haversine_distance(lat1, long1, lat2, long2):
+    # Radius of Earth in kilometers.
+    radius = 6371.0
+
+    # Convert latitude and longitude from degrees to radians
+    lat1_radian = math.radians(float(lat1))
+    long1_radian = math.radians(float(long1))
+    lat2_radian = math.radians(float(lat2))
+    long2_radian = math.radians(float(long2))
+
+    long_delta = long2_radian - long1_radian
+    lat_delta = lat2_radian - lat1_radian
+    a = math.sin(lat_delta / 2)**2 + math.cos(lat1_radian) * math.cos(lat2_radian) * math.sin(long_delta / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    distance = radius * c
+    return distance
+
+
+def weather_station_compare_long_lat(bq_long_lat, ashrae_long_lat, combined_list):
+
+    for bq_long, bq_lat in bq_long_lat:
+        combined_list_init = {
+            "bq_long": bq_long,
+            "bq_lat": bq_lat,
+            "ashrae_long": None,
+            "ashrae_lat": None,
+            "distance": None,
+            "ashrae_href": ""
+        }
+        distances = []
+        for ashrae in ashrae_long_lat:
+            ashrae_long = ashrae["longitude"]
+            ashrae_lat = ashrae["latitude"]
+            distance = haversine_distance(bq_lat, bq_long, ashrae_lat, ashrae_long)
+            ashrae["distance"] = distance
+            distances.append(ashrae)
+        sorted_distances = sorted(distances, key=lambda p: p["distance"], reverse=False)
+        closest_ashrae_station = sorted_distances[0]
+
+        combined_list_init["ashrae_long"] = float(closest_ashrae_station["longitude"])
+        combined_list_init["ashrae_lat"] = float(closest_ashrae_station["latitude"])
+        combined_list_init["distance"] = closest_ashrae_station["distance"]
+        combined_list_init["ashrae_href"] = closest_ashrae_station["href"]
+        combined_list.append(combined_list_init)
+    return combined_list
+
+
 def get_station_data(full_station_data, country_href_list):
     """ Starting here we get the climate station data
 
@@ -172,7 +278,7 @@ def get_station_data(full_station_data, country_href_list):
     print("Length of how long the country_href_list to process: %s" % len(country_href_list))
     total_iterations = len(country_href_list) // 10 + (1 if len(country_href_list) % 10 != 0 else 0)
     print("Total number of iterations: %s" % total_iterations)
-    # We want to have groups of 10 links at a time, so we don't open 9000 tabs.
+
     for idx, i in enumerate(range(0, len(country_href_list), 10)):
         iteration_start_time = time.time()
         progress = (idx / total_iterations) * 100
@@ -363,10 +469,25 @@ def ashrae_to_csv(full_station_data):
 
 def main():
     main_start_time = time.time()
-    full_station_data = []
+
     empty_country_href_list = []
     country_href_list = get_country_list(empty_country_href_list)
-    get_station_data(full_station_data, country_href_list)
+
+    href_long_lat = []
+    get_href_long_lat(country_href_list, href_long_lat)
+
+    combined_list = []
+    non_none_href_long_lat = [x for x in href_long_lat if x["latitude"] != "" or x["longitude"] != ""]
+    weather_station_compare_long_lat(weather_station_long_lat, non_none_href_long_lat, combined_list)
+
+    full_station_data = []
+    combined_list_links = [links["ashrae_href"] for links in combined_list]
+    get_station_data(full_station_data, combined_list_links)
+
+    # Join onto combined_list to get the 5, 10, 20, 50 max values
+    # Need to import pandas and have combined_list left join full_station_data
+
+
     ashrae_to_csv(full_station_data)
     main_end_time = time.time()
     main_execution_time = main_end_time - main_start_time
