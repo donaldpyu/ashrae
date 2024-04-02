@@ -602,7 +602,7 @@ def join_station_data(bq_data, ashrae_data):
     df2 = pd.DataFrame(bq_data)
     joined_df = pd.merge(df2, unique_df1, left_on=["ashrae_long", "ashrae_lat"], right_on=["longitude", "latitude"])
     joined_df.to_csv(joined_df, index=False)
-    return
+    return joined_df
 
 
 def ashrae_to_csv(full_station_data):
