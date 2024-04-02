@@ -635,20 +635,25 @@ def ashrae_to_csv(full_station_data):
 def main():
     main_start_time = time.time()
 
+    # Get country links.
     empty_country_href_list = []
     country_href_list = get_country_list(empty_country_href_list)
 
+    # Get long/lats of weather stations.
     href_long_lat = []
     get_href_long_lat(country_href_list, href_long_lat)
 
+    # Get Haversine distance from weather station and ASHRAE and find closest distance.
     combined_list = []
     non_none_href_long_lat = [x for x in href_long_lat if x["latitude"] != "" or x["longitude"] != ""]
     weather_station_compare_long_lat(weather_station_long_lat, non_none_href_long_lat, combined_list)
 
+    # Get data from ASHRAE.
     full_station_data = []
     combined_list_links = [links["ashrae_href"] for links in combined_list]
     get_station_data(full_station_data, combined_list_links)
 
+    # Join ASHRAE data onto weather stations and export data.
     join_station_data(bq_data=combined_list, ashrae_data=full_station_data)
     ashrae_to_csv(full_station_data)
 
