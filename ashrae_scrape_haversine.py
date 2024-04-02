@@ -16,6 +16,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 import pandas as pd
+import json
 
 
 ashrae_base_link = "https://ashrae-meteo.info/v2.0/"
@@ -597,11 +598,11 @@ def join_station_data(bq_data, ashrae_data):
         }
     :return: A joined pandas DataFrame.
     """
-    df1 = pd.DataFrame(ashrae_data)
+    df1 = pd.read_csv(ashrae_data)
     unique_df1 = df1.drop_duplicates(subset=["station_name"])
     df2 = pd.DataFrame(bq_data)
     joined_df = pd.merge(df2, unique_df1, left_on=["ashrae_long", "ashrae_lat"], right_on=["longitude", "latitude"])
-    joined_df.to_csv(joined_df, index=False)
+    joined_df.to_csv("joined_df.csv", index=False)
     return joined_df
 
 
@@ -653,9 +654,11 @@ def main():
     combined_list_links = [links["ashrae_href"] for links in combined_list]
     get_station_data(full_station_data, combined_list_links)
 
-    # Join ASHRAE data onto weather stations and export data.
-    join_station_data(bq_data=combined_list, ashrae_data=full_station_data)
+    # Export station data.
     ashrae_to_csv(full_station_data)
+
+    # Join ASHRAE data onto weather stations and export data.
+    join_station_data(bq_data=combined_list, ashrae_data="full_station_data.csv")
 
     main_end_time = time.time()
     main_execution_time = main_end_time - main_start_time
