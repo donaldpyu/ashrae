@@ -10,7 +10,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # Run main script
-python ashrae_scrape.py
+python ashrae_scrape_haversine.py
 
 # Deactivate virtual environment
 deactivate
