@@ -15,6 +15,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+import pandas as pd
+import json
+
 weather_station_long_lat = [
     (-73.75, 45.5),
     (-95.75, 41.25),
@@ -429,6 +432,7 @@ def get_station_data(full_station_data, country_href_list):
             print(f"{dry_wet_final["station_name"]} data has been added to full_station_data.")
             second_driver.close()
             random_wait()
+
             iteration_end_time = time.time()
             iteration_execution_time = iteration_end_time - iteration_start_time
             print(f"{dry_wet_final["station_name"]} iteration execution time took {iteration_execution_time:.2f} seconds")
@@ -438,6 +442,38 @@ def get_station_data(full_station_data, country_href_list):
     total_execution_time = total_end_time - total_start_time
     print(f"Total get_station_data execution time took {total_execution_time:.2f} seconds")
     return full_station_data
+
+
+def join_station_data(bq_data, ashrae_data):
+    """ Joining both data to get the BQ forecast long/lat with the ASHRAE long/lat.
+
+    :param bq_data: Should be combined_list.
+        Fields:
+        {
+            "bq_long": float,
+            "bq_lat": float,
+            "ashrae_long": float,
+            "ashrae_lat": float,
+            "distance": float,
+            "ashrae_href": string
+        }
+    :param ashrae_data: Should be full_station_data or full_station_data.csv.
+        Fields:
+        {
+            "station_name": string,
+            "latitude": float,
+            "longitude": float,
+            "drybulb": [string, float],
+            "wetbulb": [string, float]
+        }
+    :return: A joined pandas DataFrame.
+    """
+    df1 = pd.read_csv(ashrae_data)
+    unique_df1 = df1.drop_duplicates(subset=["station_name"])
+    df2 = pd.DataFrame(bq_data)
+    joined_df = pd.merge(df2, unique_df1, left_on=["ashrae_long", "ashrae_lat"], right_on=["longitude", "latitude"])
+    joined_df.to_csv(joined_df, index=False)
+    return
 
 
 def ashrae_to_csv(full_station_data):
@@ -484,11 +520,9 @@ def main():
     combined_list_links = [links["ashrae_href"] for links in combined_list]
     get_station_data(full_station_data, combined_list_links)
 
-    # Join onto combined_list to get the 5, 10, 20, 50 max values
-    # Need to import pandas and have combined_list left join full_station_data
-
-
+    join_station_data(bq_data=combined_list, ashrae_data=full_station_data)
     ashrae_to_csv(full_station_data)
+
     main_end_time = time.time()
     main_execution_time = main_end_time - main_start_time
     print(f"Total main program took {main_execution_time:.2f}")
